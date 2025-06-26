@@ -32,8 +32,6 @@ def main():
     except Exception as ex:
         print(ex)
 
-
-
 def Upload_Images(folder):
     print("Uploading images...")
 

@@ -2,10 +2,12 @@ import os
 import json
 
 # Add references
+from dotenv import load_dotenv
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+import requests
 
-
-def main(): 
-
+def main():
     # Clear the console
     os.system('cls' if os.name=='nt' else 'clear')
         
@@ -17,10 +19,14 @@ def main():
         model_deployment =  os.getenv("MODEL_DEPLOYMENT")
         
         # Initialize the OpenAI client1
-        
-        
+        project_client = AIProjectClient(
+            endpoint=project_connection,
+            credential=DefaultAzureCredential
+            (exclude_environment_credential=True,
+             exclude_managed_identity_credential=True)
+        )
+        openai_client = project_client.inference.get_azure_openai_client(api_version="2024-06-01")
 
-         
         img_no = 0
         # Loop until the user types 'quit'
         while True:
@@ -31,15 +37,21 @@ def main():
             if len(input_text) == 0:
                 print("Please enter a prompt.")
                 continue
-            
-            # Generate an image
-            
 
-            # save the image
+            # Generate an image
+            result = openai_client.images.generate(
+                model=model_deployment,
+                prompt=input_text,
+                n=1
+            )
+
+            json_response = json.loads(result.model_dump_json())
+            image_url = json_response["data"][0]["url"]
+
+# save the image
             img_no += 1
             file_name = f"image_{img_no}.png"
             save_image (image_url, file_name)
-
 
     except Exception as ex:
         print(ex)
@@ -60,7 +72,6 @@ def save_image (image_url, file_name):
     with open(image_path, "wb") as image_file:
         image_file.write(generated_image)
     print (f"Image saved as {image_path}")
-
 
 if __name__ == '__main__': 
     main()

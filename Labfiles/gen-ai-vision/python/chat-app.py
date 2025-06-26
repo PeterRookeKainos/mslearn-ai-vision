@@ -4,7 +4,16 @@ import base64
 from pathlib import Path
 
 # Add references
-
+from dotenv import load_dotenv
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.inference.models import (
+    SystemMessage,
+    UserMessage,
+    TextContentItem,
+    ImageContentItem,
+    ImageUrl,
+)
 
 def main(): 
 
@@ -18,16 +27,16 @@ def main():
         project_connection = os.getenv("PROJECT_CONNECTION")
         model_deployment =  os.getenv("MODEL_DEPLOYMENT")
 
-
-
         # Initialize the project client
-
-        
+        project_client = AIProjectClient(
+        endpoint=project_connection,
+        credential=DefaultAzureCredential
+            (exclude_environment_credential=True,
+            exclude_managed_identity_credential=True)
+        )
 
         # Get a chat client
-        
-
-
+        chat_client = project_client.inference.get_chat_completions_client(model=model_deployment)
 
         # Initialize prompts
         system_message = "You are an AI assistant in a grocery store that sells fruit."
@@ -43,9 +52,27 @@ def main():
             else:
                 print("Getting a response ...\n")
 
-
                 # Get a response to image input
-                    
+                script_dir = Path(__file__).parent  # Get the directory of the script
+                image_path = script_dir / 'mystery-fruit.jpeg'
+                mime_type = "image/jpeg"
+
+                # Read and encode the image file
+                with open(image_path, "rb") as image_file:
+                    base64_encoded_data = base64.b64encode(image_file.read()).decode('utf-8')
+
+                # Include the image file data in the prompt
+                data_url = f"data:{mime_type};base64,{base64_encoded_data}"
+                response = chat_client.complete(
+                    messages=[
+                        SystemMessage(system_message),
+                        UserMessage(content=[
+                            TextContentItem(text=prompt),
+                            ImageContentItem(image_url=ImageUrl(url=data_url))
+                        ]),
+                    ]
+                )
+                print(response.choices[0].message.content)
 
 
     except Exception as ex:
